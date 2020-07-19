@@ -11,27 +11,39 @@ public class GenerateGraph : MonoBehaviour
     public int scale = 5;
     UndirectedGraph<int> myGraph;
     System.Random nNodes;
+    // Singleton pattern. THERE CAN BE ONLY YIN !
+    private static GenerateGraph _instance;
+
+    // ONLY YIN !1!!!1
+    void Awake()
+    {
+        if (_instance == null)
+        {
+            _instance = this;
+            DontDestroyOnLoad(this.gameObject);
+        }
+        else 
+        {
+            Destroy(this);
+        }
+    }
+
     // Start is called before the first frame update
     void Start()
     {
         nNodes = new System.Random();
-        myGraph = GenerateUndirectedGraph(nNodes.Next(15, 30), Probability);
-        Debug.Log(myGraph.size);
-        foreach (var item in myGraph.Nodes)
-        {
-            var bb = Instantiate(room, item.Position, room.transform.rotation);
-            bb.name = item.RoomType;
-        }
+        genGraphDbg();
 
 
     }
 
-    // Update is called once per frame
-    void Update()
+    // Generate corridors using door positions.
+    public void GenerateCorridors()
     {
 
     }
 
+    // Generates a new random dungeon and renders the rooms.
     public void genGraphDbg()
     {
         GameObject[] garbage = GameObject.FindGameObjectsWithTag("Room");
@@ -40,13 +52,14 @@ public class GenerateGraph : MonoBehaviour
             Destroy(vRoom);
         }
         myGraph = GenerateUndirectedGraph(nNodes.Next(15, 30), Probability);
-        Debug.Log(myGraph.size);
         foreach (var item in myGraph.Nodes)
         {
-            Instantiate(room, item.Position, room.transform.rotation);
+            var roomInstance = Instantiate(room, item.Position, room.transform.rotation);
+            roomInstance.name = item.RoomType;
         }
     }
 
+    // Generates a new undirected graph using an adjacency matrix.
     public UndirectedGraph<int> GenerateUndirectedGraph(int size, float probability)
     {
         UndirectedGraph<int> graph = new UndirectedGraph<int>(size);
@@ -55,33 +68,26 @@ public class GenerateGraph : MonoBehaviour
 
         for (int x = 0; x < size; x++)
         {
-
-
             if (x == 0)
             {
                 graph.AddNode(new EntryNode(x, Vector3.zero));
-                
+
             }
             else if (x == size - 2)
             {
-                graph.AddNode(new BossRoom(x, new Vector3(rPos.Next(x, x + 3) * scale, 0, rPos.Next(x, x + 3) * scale)));
-                
+                graph.AddNode(new BossRoom(x, new Vector3(rPos.Next(x-3, x + 3) * scale, 0, rPos.Next(x-3, x + 3) * scale)));
             }
             else if (x == size - 1)
             {
-                graph.AddNode(new ExitNode(x, new Vector3(rPos.Next(x, x + 3) * scale, 0, rPos.Next(x, x + 3) * scale)));
-                
+                graph.AddNode(new ExitNode(x, new Vector3(rPos.Next(x-3, x + 3) * scale, 0, rPos.Next(x-3, x + 3) * scale)));
             }
 
             else
             {
-                graph.AddNode(new RoomNode(x, new Vector3(rPos.Next(x, x + 3) * scale, 0, rPos.Next(x, x + 3) * scale )));
-                
+                graph.AddNode(new RoomNode(x, new Vector3(rPos.Next(x-3, x + 3) * scale, 0, rPos.Next(x-3, x + 3) * scale)));
             }
-
-
-
         }
+
         for (int x = 0; x < size; x++)
         {
             for (int y = 0; y < size; y++)
@@ -90,18 +96,24 @@ public class GenerateGraph : MonoBehaviour
                 if (adjMat[x, y] == 1 && !graph.Nodes[x].Neighbours.Contains(graph.Nodes[y]))
                 {
                     graph.Nodes[x].AddEdge(graph.Nodes[y]);
-                    
+
                 }
             }
         }
+
         return graph;
     }
+
+    // Generates an adjacency matrix using a RNG and a probability parameter.
+    // Possibly redundant.
     public int[,] GenerateAdjacencyMatrix(int size, float probability)
     {
         System.Random diceRoll = new System.Random();
         int[,] adjMat = new int[size, size];
         for (int x = 0; x < size; x++)
         {
+            if(x == (int)size/2) probability -= 0.2f;
+            
             for (int y = 0; y < size; y++)
             {
                 int difference = Mathf.Abs(y) - x;
@@ -114,6 +126,7 @@ public class GenerateGraph : MonoBehaviour
         return adjMat;
     }
 
+    // Draws Gizmos to debug the dungeon.
     void OnDrawGizmos()
     {
         if (myGraph != null)
